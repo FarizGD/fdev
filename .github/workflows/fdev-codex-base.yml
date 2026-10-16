@@ -1,0 +1,30 @@
+name: FDev Codex base
+on:
+  push:
+    branches: [main, feat/fdev-core-bootstrap]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  codex:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: codex-rs
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: codex-rs
+      - name: Validate Codex workspace
+        run: cargo metadata --no-deps --format-version 1
+      - name: Check CLI
+        run: cargo check -p codex-cli --locked
+      - name: Check TUI
+        run: cargo check -p codex-tui --locked
