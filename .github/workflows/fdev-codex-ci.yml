@@ -58,7 +58,7 @@ jobs:
         run: cargo metadata --no-deps --locked --format-version 1 > workspace-metadata.json
       - name: Check formatting of changed Rust files
         run: |
-          rustfmt --edition 2024 --check cli/src/main.rs cli/tests/fdev.rs utils/cargo-bin/src/lib.rs
+          rustfmt --edition 2024 --check cli/src/main.rs cli/tests/fdev.rs cli/src/provider_cmd.rs cli/src/repository_map.rs utils/cargo-bin/src/lib.rs utils/home-dir/src/lib.rs tui/src/update_action.rs tui/src/updates.rs cli/tests/update.rs
       - name: Static analysis
         run: cargo clippy -p codex-cli --bin fdev --locked
       - name: Unit tests
@@ -66,7 +66,10 @@ jobs:
       - name: Build FDev release binary
         run: cargo build --release --locked -p codex-cli --bin fdev
       - name: CLI integration test
-        run: cargo test --release --locked -p codex-cli --test fdev
+        run: |
+          cargo test --release --locked -p codex-cli --test fdev --test update
+          cargo test --release --locked -p codex-cli --bin fdev provider_cmd::tests
+          cargo test --release --locked -p codex-cli --bin fdev repository_map::tests
       - name: CLI smoke tests
         run: |
           ./target/release/${{ matrix.executable }} --version
@@ -77,7 +80,7 @@ jobs:
           mkdir -p ../dist/fdev-${{ matrix.target }}/licenses
           cp target/release/${{ matrix.executable }} ../dist/fdev-${{ matrix.target }}/
           cp ../LICENSE.md ../README.md ../dist/fdev-${{ matrix.target }}/
-          cp ../licenses/* ../dist/fdev-${{ matrix.target }}/licenses/ 2>/dev/null || test -f ../dist/fdev-${{ matrix.target }}/licenses/codex-LICENSE.md
+          cp -R ../licenses/. ../dist/fdev-${{ matrix.target }}/licenses/
       - uses: actions/upload-artifact@v4
         with:
           name: fdev-${{ matrix.target }}

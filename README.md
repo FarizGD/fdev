@@ -120,16 +120,43 @@ Massive credits to these projects and their contributors:
 
 FDev is an independent experiment. **Not officially affiliated with, sponsored by, or endorsed by** any upstream project.
 
+## Codex-first recovery
+
+The foundation is now **`codex-rs/cli` + `codex-rs/core` + `codex-rs/tui`**.
+Cargo builds the main executable as `fdev`. The other seven codebases stay as
+feature references. Bukan delapan runtime jalan barengan.
+
+The Python bootstrap is legacy reference material; its packaging workflow is
+disabled. The root Cargo/npm manifests belong to imported projects. Build from
+`codex-rs`, not the repository root.
+
+[Recovery evidence and remaining work](docs/fdev/recovery.md) ·
+[Feature-source comparison](docs/fdev/features.md) ·
+[Provider configuration](docs/fdev/providers.md)
+
 ## Installation
 
-```console
-$ fdev
-command not found
+**Source build under verification:** Windows x86_64, Linux x86_64, and Linux
+ARM64 are the CI targets. Successful jobs will attach `fdev-<target>` artifacts
+to [GitHub Actions](https://github.com/FarizGD/fdev/actions/workflows/fdev-codex-ci.yml).
+An artifact is not an official release. Native Termux support remains unverified;
+Linux ARM64 binaries are not Android binaries. No macOS distribution is planned.
+
+```sh
+cd codex-rs
+cargo build --release --locked -p codex-cli --bin fdev
+./target/release/fdev --help
+# Windows PowerShell: .\target\release\fdev.exe --help
 ```
 
-Yeah... about that.
+The workspace pins Rust 1.95.0. Linux CI installs pkg-config, OpenSSL development
+headers, libcap development headers, ALSA development headers, CMake, and Clang.
+For a low-memory source build, set `CARGO_BUILD_JOBS=1`; compiling this workspace
+is still substantial. Do not install the unrelated root npm/Python application.
 
-Belum ada official installation instructions karena unified app-nya belum jadi. Nanti kalau udah beneran buildable, baru kita tulis command yang nggak bohong.
+FDev configuration uses `~/.fdev` with `FDEV_HOME` and legacy `CODEX_HOME`
+overrides. See the provider guide before configuring a model. A real provider
+interaction is deferred until credentials are available — no magic claims here.
 
 ## Developer philosophy
 

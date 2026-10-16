@@ -73,8 +73,10 @@ mod mcp_cmd;
 mod mcp_login;
 mod migrate_rollouts;
 mod plugin_cmd;
+mod provider_cmd;
 mod queue_cmd;
 mod remote_control_cmd;
+mod repository_map;
 #[cfg(target_os = "windows")]
 mod sandbox_setup;
 mod sandbox_uninstall;
@@ -145,8 +147,22 @@ struct MultitoolCli {
     subcommand: Option<Subcommand>,
 }
 
+#[derive(Debug, Args)]
+struct ContextMapCommand {
+    #[arg(long, default_value = ".")]
+    path: PathBuf,
+    #[arg(long, default_value_t = 200)]
+    max_files: usize,
+}
+
 #[derive(Debug, clap::Subcommand)]
 enum Subcommand {
+    /// Print a bounded inventory of Git-tracked files for coding context.
+    ContextMap(ContextMapCommand),
+
+    /// Configure an API provider without storing API keys.
+    Provider(provider_cmd::ProviderCommand),
+
     /// Browse all agent sessions on the shared local app-server daemon.
     Agents(AgentsCommand),
 
@@ -793,6 +809,12 @@ fn run_update_action(
     action: UpdateAction,
     cli_executable: Option<&std::path::Path>,
 ) -> anyhow::Result<()> {
+    if !matches!(
+        action,
+        UpdateAction::Daemon(codex_tui::DaemonUpdateSource::ThisCli)
+    ) {
+        return run_update_command();
+    }
     if let UpdateAction::Daemon(source) = action {
         let executable = cli_executable
             .ok_or_else(|| anyhow::anyhow!("Cannot locate the launching Codex CLI"))?;
@@ -874,22 +896,9 @@ fn resolve_windows_update_command_from_path(
 }
 
 fn run_update_command() -> anyhow::Result<()> {
-    #[cfg(debug_assertions)]
-    {
-        anyhow::bail!(
-            "`codex update` is not available in debug builds. Install a release build of Codex to use this command."
-        );
-    }
-
-    #[cfg(not(debug_assertions))]
-    {
-        let Some(action) = codex_tui::get_update_action() else {
-            anyhow::bail!(
-                "Could not detect the Codex installation method. Please update manually: https://developers.openai.com/codex/cli/"
-            );
-        };
-        run_update_action(action, /*cli_executable*/ None)
-    }
+    anyhow::bail!(
+        "FDev updates must be installed from https://github.com/FarizGD/fdev. Automatic updates are unavailable until FDev distribution is verified."
+    )
 }
 
 fn run_execpolicycheck(cmd: ExecPolicyCheckCommand) -> anyhow::Result<()> {
@@ -1682,6 +1691,25 @@ async fn cli_main(
             )?;
             run_update_command()?;
         }
+        Some(Subcommand::ContextMap(command)) => {
+            reject_remote_mode_for_subcommand(
+                root_remote.as_deref(),
+                root_remote_auth_token_env.as_deref(),
+                "context-map",
+            )?;
+            print!(
+                "{}",
+                repository_map::tracked_file_map(&command.path, command.max_files)?
+            );
+        }
+        Some(Subcommand::Provider(provider_cli)) => {
+            reject_remote_mode_for_subcommand(
+                root_remote.as_deref(),
+                root_remote_auth_token_env.as_deref(),
+                "provider",
+            )?;
+            provider_cli.run()?;
+        }
         Some(Subcommand::Doctor(doctor_cli)) => {
             reject_remote_mode_for_subcommand(
                 root_remote.as_deref(),
@@ -2320,6 +2348,8 @@ fn unsupported_subcommand_name_for_strict_config(
         Some(Subcommand::Logout(_)) => Some("logout"),
         Some(Subcommand::Completion(_)) => Some("completion"),
         Some(Subcommand::Update) => Some("update"),
+        Some(Subcommand::Provider(_)) => Some("provider"),
+        Some(Subcommand::ContextMap(_)) => Some("context-map"),
         Some(Subcommand::Cloud(_)) => Some("cloud"),
         Some(Subcommand::Sandbox(_)) => Some("sandbox"),
         Some(Subcommand::Debug(_)) => Some("debug"),

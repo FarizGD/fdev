@@ -9,5 +9,7 @@
   endpoint and credential references, and does not expose secrets.
 - FDEV-004: Unsupported Android sandbox facilities must never silently grant
   unrestricted execution.
+- FDEV-005: A bounded Git-tracked file inventory provides explicit coding
+  context, excludes untracked file contents, and escapes terminal controls.
 
 Implementation and verification status lives in docs/fdev/recovery.md.

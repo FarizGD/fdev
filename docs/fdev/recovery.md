@@ -15,10 +15,12 @@ Do not build the root Cargo/npm/Bazel workspaces to build FDev.
 - PR #1 later introduced a separate Python chat client and packaging workflow.
   Its sources remain for reference; its workflow is now `.yml.disabled` so
   it cannot ship a different application under the same executable name.
-- Compared the imported Codex Cargo manifest, CLI main, core manifest, and
-  TUI manifest with upstream `2bf2bdf82c33f4c66ba3f0767b8e4b6a933aac40`:
-  these files were byte-identical before FDev edits. Cargo.lock differed;
-  full provenance and dependency-license audit remain pending.
+- Exact imported Codex baseline: upstream commit
+  `4eb4a65407d98cebc4c83bf13be440b9fbc78a7c`. The complete imported
+  `codex-rs` Git tree matches upstream tree
+  `4f2abde84b6caf920c44bb9e5e897cc15015cc76` (8,737 files).
+  No restoration is needed inside that tree. Root-level collisions remain
+  outside the active workspace; this comparison does not audit other imports.
 - `cargo metadata --no-deps --format-version 1` passed on native
   `aarch64-linux-android`, rustc 1.99.0 (Termux).
 - Initial offline check failed because patched crossterm was not cached.
@@ -38,6 +40,29 @@ It runs clippy, focused unit tests, release builds, a CLI branding integration
 test, and help/version smoke tests. Artifacts include upstream license texts.
 No macOS builds or release publishing are enabled. Linux ARM64 is explicitly
 not a Termux artifact. These jobs are configured, not yet verified green.
+
+## Milestone 2: configuration and bounded repository context
+
+Work continues on `main` at the user's request; the development branch was
+fast-forwarded into main and pushed. No history was rewritten.
+
+- Added FDEV_HOME / ~/.fdev with CODEX_HOME compatibility and strict invalid-path
+  handling. Native Termux TDD: the added tests failed before implementation;
+  all 7 home-directory tests passed afterward.
+- Added `provider list` and `provider config`, generating Responses-compatible
+  configuration with URL/key-reference/context-limit validation. Runtime TOML
+  deserialization and CLI tests are included; CI results are pending.
+- Added `context-map`, a bounded, escaped Git file inventory inspired by Aider
+  and Continue. Four real-Git tests passed natively after failing before the
+  implementation. The same source module was compiled with rustc --test and
+  the Cargo-built tempfile dependency; full CLI integration is still pending.
+- Prevented the CLI/TUI update path from installing upstream Codex packages.
+  Automatic updates remain unavailable until FDev distribution is verified.
+- Added a local Responses SSE integration test driving the actual CLI,
+  patch tool, and preapproved read/echo shell command in a disposable workspace.
+  Only the model service is mocked. This is not a sandbox-isolation test.
+
+See [feature comparison](features.md) and [provider setup](providers.md).
 
 ## Remaining milestones
 
