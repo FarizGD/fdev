@@ -1,0 +1,54 @@
+name: FDev core - Windows Linux Termux
+on:
+  push:
+    paths:
+      - 'fdev.py'
+      - 'fdev_core/**'
+      - 'tests/test_fdev_core.py'
+      - '.github/workflows/fdev-core-build.yml'
+  pull_request:
+    paths:
+      - 'fdev.py'
+      - 'fdev_core/**'
+      - 'tests/test_fdev_core.py'
+      - '.github/workflows/fdev-core-build.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Unit tests
+        run: python -m unittest discover -s tests -p test_fdev_core.py -v
+      - name: Install compiler
+        run: python -m pip install pyinstaller
+      - name: Compile executable
+        run: python -m PyInstaller --onefile --name fdev fdev.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fdev-${{ runner.os }}
+          path: dist/fdev*
+          if-no-files-found: error
+  termux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m unittest discover -s tests -p test_fdev_core.py -v
+      - run: python -m compileall -q fdev_core fdev.py
+      - run: mkdir -p dist && tar -czf dist/fdev-termux-python.tar.gz fdev.py fdev_core
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fdev-Termux-python
+          path: dist/fdev-termux-python.tar.gz
