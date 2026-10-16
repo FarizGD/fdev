@@ -1,7 +1,7 @@
-name: FDev Codex CI
+name: FDev Rust CI
 on:
   push:
-    branches: [main]
+    branches: [main, 'fdev/**']
   pull_request:
   workflow_dispatch:
 
@@ -12,26 +12,81 @@ concurrency:
   group: fdev-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_BUILD_JOBS: 2
+  CARGO_PROFILE_RELEASE_LTO: 'false'
+  CARGO_PROFILE_RELEASE_DEBUG: '0'
+  CARGO_PROFILE_RELEASE_CODEGEN_UNITS: '16'
+
 jobs:
-  codex-check:
-    name: Codex CLI/TUI (${{ matrix.os }})
+  build:
+    name: ${{ matrix.target }}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        include:
+          - os: ubuntu-24.04
+            target: x86_64-unknown-linux-gnu
+            executable: fdev
+          - os: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+            executable: fdev
+          - os: windows-2025
+            target: x86_64-pc-windows-msvc
+            executable: fdev.exe
     defaults:
       run:
+        shell: bash
         working-directory: codex-rs
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: '1.95.0'
+          components: rustfmt, clippy
+      - name: Install Linux build dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y pkg-config libssl-dev libcap-dev libasound2-dev cmake clang
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: codex-rs
-      - name: Check Rust workspace
-        run: cargo metadata --no-deps --format-version 1
-      - name: Check CLI
-        run: cargo check -p codex-cli --locked
-      - name: Check TUI
-        run: cargo check -p codex-tui --locked
+          save-if: 'true'
+      - name: Validate workspace
+        run: cargo metadata --no-deps --locked --format-version 1 > workspace-metadata.json
+      - name: Check formatting of changed Rust files
+        run: |
+          rustfmt --edition 2024 --check cli/src/main.rs cli/tests/fdev.rs utils/cargo-bin/src/lib.rs
+      - name: Static analysis
+        run: cargo clippy -p codex-cli --bin fdev --locked
+      - name: Unit tests
+        run: cargo test --locked -p codex-utils-home-dir -p codex-model-provider-info -p codex-execpolicy --lib
+      - name: Build FDev release binary
+        run: cargo build --release --locked -p codex-cli --bin fdev
+      - name: CLI integration test
+        run: cargo test --release --locked -p codex-cli --test fdev
+      - name: CLI smoke tests
+        run: |
+          ./target/release/${{ matrix.executable }} --version
+          ./target/release/${{ matrix.executable }} --help
+          ./target/release/${{ matrix.executable }} exec --help
+      - name: Package binary and attribution
+        run: |
+          mkdir -p ../dist/fdev-${{ matrix.target }}/licenses
+          cp target/release/${{ matrix.executable }} ../dist/fdev-${{ matrix.target }}/
+          cp ../LICENSE.md ../README.md ../dist/fdev-${{ matrix.target }}/
+          cp ../licenses/* ../dist/fdev-${{ matrix.target }}/licenses/ 2>/dev/null || test -f ../dist/fdev-${{ matrix.target }}/licenses/codex-LICENSE.md
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fdev-${{ matrix.target }}
+          path: dist/fdev-${{ matrix.target }}/
+          if-no-files-found: error
+      - name: Preserve build diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: diagnostics-${{ matrix.target }}
+          path: codex-rs/workspace-metadata.json
+          if-no-files-found: ignore

@@ -46,3 +46,7 @@ build-fresh/
 # Per-arch runtime downloads for macOS universal builds (ELECTRON_ARCH=universal)
 /resources/bin-*/
 /resources/node-*/
+
+# Codex-based FDev build outputs
+/codex-rs/target/
+/target/
