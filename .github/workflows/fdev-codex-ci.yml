@@ -1,0 +1,37 @@
+name: FDev Codex CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fdev-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  codex-check:
+    name: Codex CLI/TUI (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    defaults:
+      run:
+        working-directory: codex-rs
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: codex-rs
+      - name: Check Rust workspace
+        run: cargo metadata --no-deps --format-version 1
+      - name: Check CLI
+        run: cargo check -p codex-cli --locked
+      - name: Check TUI
+        run: cargo check -p codex-tui --locked
