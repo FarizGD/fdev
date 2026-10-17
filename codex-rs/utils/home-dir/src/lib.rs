@@ -151,7 +151,9 @@ mod tests {
         let legacy = TempDir::new().expect("legacy directory");
         let resolved = super::find_home_from_env(fdev.path().to_str(), legacy.path().to_str())
             .expect("resolve FDev home");
-        assert_eq!(resolved.as_path(), fdev.path().canonicalize().unwrap());
+        let expected = AbsolutePathBuf::from_absolute_path(fdev.path().canonicalize().unwrap())
+            .expect("canonical FDev home");
+        assert_eq!(resolved, expected);
     }
 
     #[test]
@@ -169,6 +171,8 @@ mod tests {
         let legacy = TempDir::new().expect("legacy directory");
         let resolved = super::find_home_from_env(Some(""), legacy.path().to_str())
             .expect("resolve legacy home");
-        assert_eq!(resolved.as_path(), legacy.path().canonicalize().unwrap());
+        let expected = AbsolutePathBuf::from_absolute_path(legacy.path().canonicalize().unwrap())
+            .expect("canonical legacy home");
+        assert_eq!(resolved, expected);
     }
 }
