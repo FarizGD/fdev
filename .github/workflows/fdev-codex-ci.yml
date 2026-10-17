@@ -8,9 +8,8 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: fdev-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+# Keep runs independent: Codex release builds can exceed an hour.
+# Do not auto-cancel an in-progress build when a new commit is pushed.
 
 env:
   CARGO_TERM_COLOR: always
@@ -23,7 +22,7 @@ jobs:
   build:
     name: ${{ matrix.target }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 90
+    timeout-minutes: 180
     strategy:
       fail-fast: false
       matrix:
