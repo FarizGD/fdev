@@ -153,7 +153,11 @@ async fn responses_stream_drives_file_edits_and_preapproved_shell() -> Result<()
         let tool_results: Vec<_> = captured
             .iter()
             .filter_map(|request| request.body_json::<serde_json::Value>().ok())
-            .filter_map(|body| body.get("input").and_then(|input| input.as_array()).cloned())
+            .filter_map(|body| {
+                body.get("input")
+                    .and_then(|input| input.as_array())
+                    .cloned()
+            })
             .flatten()
             .filter(|item| {
                 matches!(
@@ -170,13 +174,17 @@ async fn responses_stream_drives_file_edits_and_preapproved_shell() -> Result<()
         )
     };
     assert_eq!(
-        std::fs::read_to_string(workspace.path().join("created.txt")).ok().as_deref(),
+        std::fs::read_to_string(workspace.path().join("created.txt"))
+            .ok()
+            .as_deref(),
         Some("created by the agent\n"),
         "{}",
         diagnostic()
     );
     assert_eq!(
-        std::fs::read_to_string(workspace.path().join("existing.txt")).ok().as_deref(),
+        std::fs::read_to_string(workspace.path().join("existing.txt"))
+            .ok()
+            .as_deref(),
         Some("after\n"),
         "{}",
         diagnostic()
