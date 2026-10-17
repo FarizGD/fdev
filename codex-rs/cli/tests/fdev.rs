@@ -142,16 +142,45 @@ async fn responses_stream_drives_file_edits_and_preapproved_shell() -> Result<()
         .timeout(Duration::from_secs(90))
         .assert()
         .success()
-        .stdout(contains("fdev-smoke-complete"));
-    assert_eq!(
-        std::fs::read_to_string(workspace.path().join("created.txt"))?,
-        "created by the agent\n"
-    );
-    assert_eq!(
-        std::fs::read_to_string(workspace.path().join("existing.txt"))?,
-        "after\n"
-    );
+        .stdout(contains("fdev-smoke-complete"))
+        .get_output()
+        .clone();
     let captured = server.received_requests().await.unwrap();
+    // A successful agent response does not imply that its tool calls succeeded.
+    // Include tool results in failure output so CI reveals the actual cause,
+    // rather than a context-free "No such file or directory" error.
+    let diagnostic = || {
+        let tool_results: Vec<_> = captured
+            .iter()
+            .filter_map(|request| request.body_json::<serde_json::Value>().ok())
+            .filter_map(|body| body.get("input").and_then(|input| input.as_array()).cloned())
+            .flatten()
+            .filter(|item| {
+                matches!(
+                    item.get("type").and_then(|kind| kind.as_str()),
+                    Some("function_call_output" | "custom_tool_call_output")
+                )
+            })
+            .collect();
+        format!(
+            "requests: {}; tool results: {tool_results:?}; CLI stdout: {}; CLI stderr: {}",
+            captured.len(),
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        )
+    };
+    assert_eq!(
+        std::fs::read_to_string(workspace.path().join("created.txt")).ok().as_deref(),
+        Some("created by the agent\n"),
+        "{}",
+        diagnostic()
+    );
+    assert_eq!(
+        std::fs::read_to_string(workspace.path().join("existing.txt")).ok().as_deref(),
+        Some("after\n"),
+        "{}",
+        diagnostic()
+    );
     let last: serde_json::Value = captured.last().unwrap().body_json()?;
     let shell_output = last["input"]
         .as_array()
