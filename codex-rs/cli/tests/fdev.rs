@@ -111,7 +111,7 @@ async fn responses_stream_drives_file_edits_and_preapproved_shell() -> Result<()
     );
     // Explicit test-only permission grant: the model fixture emits only the
     // fixed patch and read/echo command above, inside a disposable directory.
-    assert_cmd::Command::new(codex_utils_cargo_bin::cargo_bin("fdev")?)
+    let output = assert_cmd::Command::new(codex_utils_cargo_bin::cargo_bin("fdev")?)
         .env("FDEV_HOME", home.path())
         .env("CODEX_HOME", home.path())
         .env_remove("OPENAI_API_KEY")
