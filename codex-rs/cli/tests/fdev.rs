@@ -105,8 +105,11 @@ async fn responses_stream_drives_file_edits_and_preapproved_shell() -> Result<()
         .expect(3)
         .mount(&server)
         .await;
+    // Keep the built-in OpenAI model capability metadata while routing requests
+    // to the local fixture. A wholly custom provider has no apply_patch tool
+    // capability metadata, so the runtime correctly omits that handler.
     let provider = format!(
-        "model_providers.smoke={{name=\"Local test fixture\",base_url=\"{}/v1\",wire_api=\"responses\",requires_openai_auth=false,supports_websockets=false}}",
+        "model_providers.openai={{name=\"OpenAI local test fixture\",base_url=\"{}/v1\",wire_api=\"responses\",requires_openai_auth=false,supports_websockets=false}}",
         server.uri()
     );
     // Explicit test-only permission grant: the model fixture emits only the
@@ -128,7 +131,7 @@ async fn responses_stream_drives_file_edits_and_preapproved_shell() -> Result<()
             "-c",
             &provider,
             "-c",
-            "model_provider=\"smoke\"",
+            "model_provider=\"openai\"",
             "-c",
             "model=\"gpt-5.1-codex\"",
             "-c",
